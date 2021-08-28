@@ -1,0 +1,41 @@
+-- What range of years for baseball games played does the provided database cover?
+--  1871 - 2016
+SELECT MIN(span_first),
+		MAX(span_last)
+FROM homegames;
+
+-- Find the name and height of the shortest player in the database. How many games did he play in? What is the name 
+-- of the team for which he played?
+-- Eddie Gaedel, 43 in, 52 games, St. Louis Browns
+SELECT a.playerid,
+		p.namefirst,
+		p.namelast,
+		p.height,
+		t.name,
+		SUM(a.g_all) AS total_games
+FROM appearances AS a
+JOIN people AS p
+ON a.playerid = p.playerid
+JOIN teams AS t
+ON a.teamid = t.teamid
+WHERE height IN (SELECT MIN(p.height)
+				FROM people AS p)
+GROUP BY a.playerid, p.namefirst, p.namelast, p.height, t.name;
+
+-- Find all players in the database who played at Vanderbilt University. Create a list showing each player’s first 
+-- and last names as well as the total salary they earned in the major leagues. Sort this list in descending order 
+-- by the total salary earned. Which Vanderbilt player earned the most money in the majors?
+-- David Price
+SELECT p.playerid,
+		p.namefirst,
+		p.namelast,
+		SUM(s.salary) AS total_salary
+FROM people AS p
+JOIN salaries AS s
+ON p.playerid = s.playerid
+WHERE p.playerid IN (select cp.playerid
+					FROM collegeplaying AS CP
+					WHERE cp.schoolid = 'vandy')
+GROUP BY p.playerid, p.namefirst, p.namelast
+ORDER BY total_salary DESC;
+
