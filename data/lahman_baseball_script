@@ -116,21 +116,32 @@ LIMIT 5;
 
 -- 9. Which managers have won the TSN Manager of the Year award in both the National League (NL) and the American 
 -- League (AL)? Give their full name and the teams that they were managing when they won the award.
-WITH am AS (SELECT *
+-- Davey Johnson & Jim Leyland
+WITH am AS (SELECT playerid, awardid, lgid
 			FROM awardsmanagers
-		   WHERE lgid = 'NL'),
-am2 AS (SELECT *
+		   WHERE lgid = 'NL'
+		   AND awardid ILIKE 'TSN%'),
+am2 AS (SELECT playerid, awardid, lgid
 			FROM awardsmanagers
-		   WHERE lgid = 'AL'),
-am3 as (SELECT *
-			FROM awardsmanagers
-			WHERE awardid ILIKE 'TSN%')
-SELECT playerid, awardid, yearid, lgid
-FROM awardsmanagers
-WHERE playerid IN (SELECT playerid
+		   WHERE lgid = 'AL'
+		   AND awardid ILIKE 'TSN%'),
+p AS (SELECT playerid, namefirst, namelast
+	 FROM people
+	 WHERE playerid IN (SELECT playerid
+					   FROM am)
+	 AND playerid IN (SELECT playerid
+					 FROM am2))
+SELECT am3.playerid, p.namefirst, p.namelast, awardid, am3.yearid, am3.lgid, t.teamid
+FROM awardsmanagers AS am3
+LEFT JOIN p
+ON am3.playerid = p.playerid
+LEFT JOIN managershalf AS mh
+ON p.playerid = mh.playerid
+LEFT JOIN teams AS t
+ON mh.teamid = t.teamid
+WHERE p.playerid IN (SELECT p.playerid
 					FROM am)
-AND playerid IN (SELECT playerid
-					FROM am2)
-AND playerid IN (SELECT playerid
-				FROM am3)					
-ORDER BY playerid;
+AND p.playerid IN (SELECT p.playerid
+				FROM am2)
+AND awardid ILIKE 'TSN%'
+ORDER BY am3.playerid;
