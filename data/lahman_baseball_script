@@ -6,7 +6,7 @@ FROM homegames;
 
 -- 2. Find the name and height of the shortest player in the database. How many games did he play in? What is the name 
 -- 	of the team for which he played?
--- Eddie Gaedel, 43 in, 52 games, St. Louis Browns
+-- Eddie Gaedel, 43 in, 1 game, St. Louis Browns
 SELECT a.playerid,
 		p.namefirst,
 		p.namelast,
@@ -16,7 +16,8 @@ SELECT a.playerid,
 FROM appearances AS a
 LEFT JOIN people AS p
 ON a.playerid = p.playerid
-LEFT JOIN teams AS t
+LEFT JOIN (SELECT DISTINCT teamid, name
+		   FROM teams) AS t
 ON a.teamid = t.teamid
 WHERE height IN (SELECT MIN(p.height)
 				FROM people AS p)
@@ -25,29 +26,30 @@ GROUP BY a.playerid, p.namefirst, p.namelast, p.height, t.name;
 -- 3. Find all players in the database who played at Vanderbilt University. Create a list showing each player’s first 
 -- and last names as well as the total salary they earned in the major leagues. Sort this list in descending order 
 -- by the total salary earned. Which Vanderbilt player earned the most money in the majors?
--- David Price
+-- David Price, $81,851,296
 SELECT p.playerid,
 		p.namefirst,
 		p.namelast,
-		SUM(s.salary) AS total_salary
+		SUM(DISTINCT s.salary) AS total_salary
 FROM people AS p
 LEFT JOIN salaries AS s
 ON p.playerid = s.playerid
-WHERE p.playerid IN (select playerid
+WHERE p.playerid IN (SELECT playerid
 					FROM collegeplaying
 					WHERE schoolid = 'vandy')
+AND salary IS NOT NULL
 GROUP BY p.playerid, p.namefirst, p.namelast
 ORDER BY total_salary DESC;
 
 -- 4. Using the fielding table, group players into three groups based on their position: label players with position 
 -- OF as "Outfield", those with position "SS", "1B", "2B", and "3B" as "Infield", and those with position "P" or "C"
 -- as "Battery". Determine the number of putouts made by each of these three groups in 2016.
--- Outfield = 354, Infield = 661, Battery = 938
+-- Outfield = 29560, Infield = 58934, Battery = 41424
 SELECT CASE WHEN pos = 'OF' THEN 'Outfield'
 		WHEN pos = 'SS' OR pos = '1B' OR pos = '2B' OR pos = '3B' THEN ' Infield'
 		WHEN pos = 'P' OR pos = 'C' THEN ' Battery'
 		END AS position,
-		COUNT(po) AS putouts
+		SUM(po) AS putouts
 FROM fielding
 WHERE yearid = '2016'
 GROUP BY position;
@@ -84,6 +86,27 @@ ORDER BY success_rate DESC;
 -- number of wins for a team that did win the world series? Doing this will probably result in an unusually small number of 
 -- wins for a world series champion – determine why this is the case. Then redo your query, excluding the problem year. How 
 -- often from 1970 – 2016 was it the case that a team with the most wins also won the world series? What percentage of the time?
+-- Largest Wins/No WS = Seattle, 116, 2001
+-- Smallest Wins/WS = Lancaster, 63, 1981
+-- Why? 1981 was a players strike and there were not many players playing
+SELECT yearid AS year, 
+		teamid as team, 
+		wswin, 
+		w AS wins
+FROM teams
+WHERE yearid between 1970 and 2016
+AND wswin IS NOT NULL
+ORDER BY wswin, wins DESC;
+
+SELECT yearid, teamid, wswin, w, MAX(w) OVER(PARTITION BY yearid),
+CASE WHEN wswin = 'Y' AND w = MAX(w) OVER(PARTITION BY yearid) THEN 'Yes'
+ELSE 'No' END AS case
+FROM teams
+WHERE yearid between 1970 and 2016
+AND wswin IS NOT NULL
+AND yearid != 1981
+ORDER BY yearid, wswin DESC, w DESC
+
 
 -- 8. Using the attendance figures from the homegames table, find the teams and parks which had the top 5 average 
 -- attendance per game in 2016 (where average attendance is defined as total attendance divided by number of games). 
