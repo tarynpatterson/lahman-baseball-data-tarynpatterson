@@ -199,6 +199,56 @@ AND awardid ILIKE 'TSN%'
 GROUP BY am3.playerid, p.namefirst, p.namelast, awardid, am3.yearid, am3.lgid, t.name
 ORDER BY am3.playerid;
 
--- Analyze all the colleges in the state of Tennessee. Which college has had the most success in the major leagues. 
+-- 10. Analyze all the colleges in the state of Tennessee. Which college has had the most success in the major leagues. 
 -- Use whatever metric for success you like - number of players, number of games, salaries, world series wins, etc.
+-- I would consider success by the numbers of players the college had go to the major leagues. By that metric, the most 
+-- successful would be Univerity of Tennessee.
+SELECT DISTINCT s.schoolid, schoolname, COUNT(playerid)
+FROM schools AS s
+LEFT JOIN collegeplaying AS cp
+ON cp.schoolid = s.schoolid
+WHERE schoolstate = 'TN'
+AND playerid IN (SELECT playerid
+				FROM people)
+AND playerid IN (SELECT playerid
+				FROM appearances)
+GROUP BY s.schoolid
+ORDER BY COUNT(playerid) DESC;
+
+-- 11. Is there any correlation between number of wins and team salary? Use data from 2000 and later to answer this question. 
+-- As you do this analysis, keep in mind that salaries across the whole league tend to increase together, so you may want to 
+-- look on a year-by-year basis.
+WITH t AS (SELECT yearid, teamid, w
+			FROM teams
+			WHERE teamid IN (SELECT teamid
+							FROM salaries)
+		  	AND yearid >= 2000)
+SELECT t.yearid AS year, t.teamid AS team, t.w AS wins, SUM(s.salary)::NUMERIC::MONEY AS total_salary
+FROM t 
+LEFT JOIN salaries AS s
+ON s.teamid = t.teamid
+GROUP BY team, wins, year
+HAVING t.yearid >= 2000
+ORDER BY year, total_salary DESC, wins DESC;
+
+-- 12. In this question, you will explore the connection between number of wins and attendance.
+-- Does there appear to be any correlation between attendance at home games and number of wins?
+-- Do teams that win the world series see a boost in attendance the following year? What about teams that made the playoffs? 
+-- Making the playoffs means either being a division winner or a wild card winner.
+-- Attendance tends to increase as wins increase
+WITH hg AS (SELECT DISTINCT team, SUM(attendance)
+			FROM homegames
+			GROUP BY team)
+SELECT DISTINCT teamid, name, SUM(w) as total_wins, SUM(attendance) AS attendance
+FROM teams AS t
+JOIN hg
+ON t.teamid = hg.team
+WHERE attendance IS NOT NULL
+GROUP BY teamid, name
+ORDER BY total_wins DESC, attendance DESC;
+
+-- 13. It is thought that since left-handed pitchers are more rare, causing batters to face them less often, that they are more 
+-- effective. Investigate this claim and present evidence to either support or dispute this claim. First, determine just how 
+-- rare left-handed pitchers are compared with right-handed pitchers. Are left-handed pitchers more likely to win the Cy Young 
+-- Award? Are they more likely to make it into the hall of fame?
 
